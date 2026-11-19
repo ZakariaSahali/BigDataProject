@@ -1,0 +1,21 @@
+# Target build directory
+target/
+*.class
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Cache & Local Data (keep large datasets and model weights out of git)
+data/
+cache/
+embeddings/
+*.h5
+*.bin
