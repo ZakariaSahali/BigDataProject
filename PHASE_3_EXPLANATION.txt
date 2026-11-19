@@ -1,0 +1,78 @@
+================================================================================
+PHASE 3: APACHE SPARK CORE RDD INTEGRATION - EXPLANATION & ARCHITECTURE
+================================================================================
+
+1. WHAT IS THIS STEP?
+--------------------------------------------------------------------------------
+In Phase 1 and Phase 2, we built:
+  - A Change Detector that tags images as NEW, MODIFIED, DELETED, or UNCHANGED.
+  - An Embedding Cache Manager to store and retrieve vectors from disk (.bin).
+  - A Deeplearning4j (DL4J) Feature Extractor to run neural network inference.
+
+Currently, these components run sequentially on a single CPU thread.
+Phase 3 integrates Apache Spark Core RDDs (Resilient Distributed Datasets) to 
+turn this into a distributed, multi-threaded / multi-node parallel computing 
+pipeline.
+
+
+2. WHY ARE WE DOING IT? (THE PROBLEM & BENEFIT)
+--------------------------------------------------------------------------------
+A. Deep Learning inference is computationally heavy:
+   Passing an image through a neural network like VGG16 requires heavy matrix 
+   multiplications.
+   - Without Spark (Sequential): Image 1 -> Image 2 -> Image 3 ...
+     Total time = N * T seconds.
+   - With Spark (Distributed RDD): Spark splits the N images into partitions 
+     across all available CPU cores (e.g., 8 or 16 cores on your machine).
+     Multiple images are processed simultaneously, drastically reducing execution 
+     time.
+
+B. University & Academic Constraint:
+   The project specification states:
+     "Distribute processing using Apache Spark Core RDDs. No Spark SQL or DataFrames."
+   We must strictly use low-level JavaSparkContext and JavaRDD operations.
+
+
+3. THE HIGH-LEVEL PIPELINE FLOW
+--------------------------------------------------------------------------------
+[Collection Changes Detected]
+         │
+         ├── UNCHANGED images ───────> Instant Cache Hit (Loaded from .bin disk)
+         │
+         └── NEW / MODIFIED images ──> Parallelized into a Spark JavaRDD
+                                              │
+                                              ▼
+                                   Split into Partitions (CPU cores)
+                                              │
+                                              ▼
+                                   Run DL4J Feature Extraction
+                                              │
+                                              ▼
+                                   Save new embeddings to Cache
+                                              │
+                                              ▼
+[Re-assemble Full Collection: Cached Embeddings + Newly Computed Embeddings]
+
+
+4. CRITICAL ENGINEERING DETAIL: mapPartitions vs map
+--------------------------------------------------------------------------------
+Deep learning models (like VGG16) take 100MB to 500MB of memory:
+
+- POOR APPROACH (rdd.map):
+  If you use standard rdd.map(), Spark attempts to reload or serialize the 
+  heavy neural network for EVERY single image, causing massive GC overhead 
+  or OutOfMemory (OOM) crashes.
+
+- OPTIMIZED APPROACH (rdd.mapPartitions):
+  We use rdd.mapPartitions(). This initializes the DL4J model ONCE per CPU core 
+  partition, and reuses that loaded instance to process all images inside that 
+  partition.
+
+
+5. DELIVERABLES FOR THIS STEP
+--------------------------------------------------------------------------------
+- SparkPipelineContext.java: Manages JavaSparkContext lifecycle and partitions.
+- SparkEmbeddingPipeline.java: Orchestrates RDD creation, partition mapping, 
+  and hybrid assembly (cache hits + distributed extraction).
+- Unit / Integration Test: Validates distributed execution on synthetic images.
+================================================================================
