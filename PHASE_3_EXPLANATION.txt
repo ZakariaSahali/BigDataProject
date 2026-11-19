@@ -75,4 +75,113 @@ Deep learning models (like VGG16) take 100MB to 500MB of memory:
 - SparkEmbeddingPipeline.java: Orchestrates RDD creation, partition mapping, 
   and hybrid assembly (cache hits + distributed extraction).
 - Unit / Integration Test: Validates distributed execution on synthetic images.
+
+
+================================================================================
+COMPLETE EXPLANATION OF ALL AUTOMATED TEST SUITES (ONE BY ONE)
+================================================================================
+
+Why do we have tests?
+Requirement 5 of the university specification states:
+"Test each module before integration. Avoid jumping ahead before the current 
+implementation step is verified."
+Automated tests guarantee that every single component works in isolation 
+before connecting them together into a Big Data cluster.
+
+--------------------------------------------------------------------------------
+TEST 1: FingerprintAndChangeDetectionTest.java
+Location: src/test/java/.../fingerprint/FingerprintAndChangeDetectionTest.java
+--------------------------------------------------------------------------------
+Goal:
+Proves our system can inspect a folder of images, calculate cryptographic hashes, 
+and reliably identify differences between two folder versions over time.
+
+What it tests:
+1. SHA-256 Hash Consistency:
+   - Reads an image in 64 KB streaming buffers and hashes it.
+   - Hashing the exact same file twice guarantees the exact same 64-character hex.
+2. Real-World Change Simulation:
+   - Creates a temporary directory with 3 images (img1, img2, img3).
+   - Generates Manifest V1 (a JSON snapshot of the dataset).
+   - Simulates real life updates:
+       * Leaves img1 completely untouched.
+       * Modifies the byte contents of img2.
+       * Deletes img3.
+       * Adds a new file img4.
+   - Generates Manifest V2.
+   - ChangeDetector compares V1 and V2 and verifies:
+       * img1 -> UNCHANGED
+       * img2 -> MODIFIED
+       * img3 -> DELETED
+       * img4 -> NEW
+3. JSON Serialization:
+   - Saves the manifest to a .json file and parses it back from disk to ensure 
+     no metadata is lost or corrupted.
+
+--------------------------------------------------------------------------------
+TEST 2: EmbeddingCacheManagerTest.java
+Location: src/test/java/.../cache/EmbeddingCacheManagerTest.java
+--------------------------------------------------------------------------------
+Goal:
+Feature embeddings are float arrays (e.g., 4096 numbers per image). Recomputing 
+them on every run wastes massive time. This test verifies that our binary cache 
+saves vectors to disk and retrieves them instantly.
+
+What it tests:
+1. Binary Disk Persistence:
+   - Writes float vectors into compact binary files (.bin) using DataOutputStream.
+   - Destroys the cache manager object in memory, creates a new one, and verifies 
+     it loads the exact same vectors from disk with zero data loss.
+2. Cache Hit / Miss Math:
+   - Requests a missing image -> Records 1 Miss.
+   - Requests an existing image -> Records 1 Hit.
+   - Verifies the formula: Hit Rate = Hits / (Hits + Misses).
+3. The 3-Key Isolation Rule (Mandatory Requirement):
+   - Cache keys consist of: (Image SHA-256 + Model Version + Preprocessing Version).
+   - If an image is identical, but the model changes from VGG16 to ResNet50, 
+     the cache MUST treat it as a MISS to prevent mixing incompatible embeddings.
+   - This test verifies strict isolation between model and preprocessing versions.
+
+--------------------------------------------------------------------------------
+TEST 3: DL4JFeatureExtractorTest.java
+Location: src/test/java/.../dl/DL4JFeatureExtractorTest.java
+--------------------------------------------------------------------------------
+Goal:
+Verifies that Deeplearning4j can load an image, normalize its pixels into a 
+4D tensor matrix [1, 3, 224, 224], pass it through neural layers, and stop at 
+an intermediate layer to extract activation features.
+
+What it tests:
+1. Tensor Conversion:
+   - Uses DL4J NativeImageLoader to convert JPEG/PNG pixels into ND4J INDArrays.
+2. Intermediate Layer Feature Extraction:
+   - Intercepts hidden activations inside the neural network (e.g., layer fc2) 
+     and flattens the resulting tensor into a 1D float array.
+3. Determinism and Dimensions:
+   - Verifies the output vector length exactly matches the layer configuration.
+   - Passes the same image multiple times to verify the model produces identical 
+     vectors without randomness.
+
+--------------------------------------------------------------------------------
+TEST 4: SparkEmbeddingPipelineTest.java
+Location: src/test/java/.../spark/SparkEmbeddingPipelineTest.java
+--------------------------------------------------------------------------------
+Goal:
+This is the end-to-end integration test combining Spark Core RDDs, DL4J, and Cache.
+
+What it tests:
+1. Distributed Execution:
+   - Spawns a local Apache Spark cluster (local[2]).
+   - Feeds a batch of test images into sc.parallelize(images, partitions).
+   - Distributes the inference across CPU partitions using mapPartitions.
+2. Run 1 (Empty Cache):
+   - All images are NEW.
+   - Spark executes DL4J feature extraction in parallel across CPU partitions.
+   - Newly computed vectors are saved to disk cache (.bin).
+   - Verifies 4 misses, 0 hits, 4 newly persisted cache entries.
+3. Run 2 (Unchanged Dataset):
+   - Re-runs the exact same collection.
+   - Pipeline inspects the cache: all 4 images are UNCHANGED.
+   - Result: 4 instant Cache Hits!
+   - 0 images are sent to Spark DL4J workers, reducing inference time to 0 ms.
 ================================================================================
