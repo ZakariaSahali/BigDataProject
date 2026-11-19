@@ -21,7 +21,7 @@
         <spark.version>3.2.4</spark.version>
         <scala.binary.version>2.12</scala.binary.version>
         <dl4j.version>1.0.0-M2.1</dl4j.version>
-        <jackson.version>2.13.5</jackson.version>
+        <jackson.version>2.12.3</jackson.version>
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
         <slf4j.version>1.7.36</slf4j.version>
     </properties>
@@ -32,16 +32,6 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>log4j</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <!-- Deeplearning4j Core -->
@@ -87,11 +77,6 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
 
