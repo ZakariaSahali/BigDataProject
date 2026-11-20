@@ -1,0 +1,163 @@
+{
+  "version" : "v1",
+  "timestamp" : 1795198701418,
+  "datasetPath" : "/mnt/d/coding/projet BIG DATA/data/images",
+  "images" : {
+    "aquarell-hintergrund-malerei-kunst.jpg" : {
+      "relativePath" : "aquarell-hintergrund-malerei-kunst.jpg",
+      "sha256" : "799499a35fbe5b25d35367c4a524d203378b52c410e72e5d12d800acc3ba4bbd",
+      "lastModified" : 1703407931969,
+      "sizeBytes" : 161509
+    },
+    "logovol2 (2).webp" : {
+      "relativePath" : "logovol2 (2).webp",
+      "sha256" : "cb98a3be8df918e0bbade28b3b9d6c5ddda98a6dcad24b268f72d4f278f6289d",
+      "lastModified" : 1703546578468,
+      "sizeBytes" : 435144
+    },
+    "wallpaperflare.com_wallpaper (3).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (3).jpg",
+      "sha256" : "5ec0ee26fccf9bd7912d7772ad8a896fe6274267af1963c55528c52ea5be83b9",
+      "lastModified" : 1675541636645,
+      "sizeBytes" : 958981
+    },
+    "1-scaled.png.webp" : {
+      "relativePath" : "1-scaled.png.webp",
+      "sha256" : "ac64c596e0887c4673b6e624a3b7b70ed1abbdea6d7886a61d5bb9ab1efd6cbd",
+      "lastModified" : 1703108674484,
+      "sizeBytes" : 39564
+    },
+    "00645-Paint-04.png" : {
+      "relativePath" : "00645-Paint-04.png",
+      "sha256" : "6dcfa4e1709b493684f4c5a0f240fb1366ac9b188b3ee1e29eec25e4ce00f468",
+      "lastModified" : 1703408326841,
+      "sizeBytes" : 68757
+    },
+    "wallpaperflare.com_wallpaper (13).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (13).jpg",
+      "sha256" : "f67dc358a264841247238e88b3b10e2437a3ab88e1698d44bae6ec0ace29468d",
+      "lastModified" : 1684183880035,
+      "sizeBytes" : 1005394
+    },
+    "wallpaperflare.com_wallpaper (10).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (10).jpg",
+      "sha256" : "ffe6bc5bb7e1d15cfb258ce09e69ee02afc2a34c80a0454727d25d1ab9735b9b",
+      "lastModified" : 1684183872933,
+      "sizeBytes" : 1763953
+    },
+    "wallpaperflare.com_wallpaper (5).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (5).jpg",
+      "sha256" : "a5d730d87e43e3d180b28b751a819ca3cfd2b3f65a6b97700fe2972845681e64",
+      "lastModified" : 1681948921204,
+      "sizeBytes" : 977560
+    },
+    "add-color-splash.png" : {
+      "relativePath" : "add-color-splash.png",
+      "sha256" : "b8e24a6db3926f1ddf81039bbbeafcf23da9b3c34a9dbd09c65f5bffdfdbe772",
+      "lastModified" : 1703408700315,
+      "sizeBytes" : 28870
+    },
+    "wallpaperflare.com_wallpaper (12).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (12).jpg",
+      "sha256" : "9158755f43f5016f48f85aac792de3a8179bdea52a87032423b531b306ef7d8b",
+      "lastModified" : 1684183816150,
+      "sizeBytes" : 2677247
+    },
+    "wallpaperflare.com_wallpaper (2).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (2).jpg",
+      "sha256" : "2d20960cb50adb1082d28209a0da5c63bbcf37ea2f41fa88a95687275db7f6ea",
+      "lastModified" : 1675541638662,
+      "sizeBytes" : 125850
+    },
+    "5316910.png" : {
+      "relativePath" : "5316910.png",
+      "sha256" : "90f0abc34cd5b9ea31f41fa595f4da081b4d73a161bac8e529c4c244f21a5027",
+      "lastModified" : 1698607533167,
+      "sizeBytes" : 16704
+    },
+    "wallpaperflare.com_wallpaper (14).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (14).jpg",
+      "sha256" : "2a28e0cd26203171ca025ddc71e19951c05375f39f6425de0db211452964c36f",
+      "lastModified" : 1688595142824,
+      "sizeBytes" : 1867630
+    },
+    "peakpx.jpg" : {
+      "relativePath" : "peakpx.jpg",
+      "sha256" : "c341612ffa42732a8a311efc5699c947ab270f021e1bda9171e5ef6866280c03",
+      "lastModified" : 1705669808058,
+      "sizeBytes" : 1539185
+    },
+    "wallpaperflare.com_wallpaper (7).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (7).jpg",
+      "sha256" : "7ea4951edb494e677a5a26058642cfff76544397dfdd5a0fc754ea79beeffb8e",
+      "lastModified" : 1680050404809,
+      "sizeBytes" : 267673
+    },
+    "depositphotos_400386970-stock-photo-artistic-abstract-background-texture-painted.jpg" : {
+      "relativePath" : "depositphotos_400386970-stock-photo-artistic-abstract-background-texture-painted.jpg",
+      "sha256" : "90beba79dc1dd683038e864ca251a8fdca707663de07db9f33e6a98f3d6444da",
+      "lastModified" : 1703407815041,
+      "sizeBytes" : 23652
+    },
+    "logovol2.webp" : {
+      "relativePath" : "logovol2.webp",
+      "sha256" : "cb98a3be8df918e0bbade28b3b9d6c5ddda98a6dcad24b268f72d4f278f6289d",
+      "lastModified" : 1703546578468,
+      "sizeBytes" : 435144
+    },
+    "Narukami Island Grand Narukami Shrine.jpg" : {
+      "relativePath" : "Narukami Island Grand Narukami Shrine.jpg",
+      "sha256" : "24a00fdd1c4d17346b35cbd87f9bbac0f0221afda497fa805259891b936cd084",
+      "lastModified" : 1684358970652,
+      "sizeBytes" : 376032
+    },
+    "OIG (2).png" : {
+      "relativePath" : "OIG (2).png",
+      "sha256" : "2aa89ce6619680b9bdc25423313c75f2418307d98ab9ffae99e1acf4ea1401b8",
+      "lastModified" : 1703546670787,
+      "sizeBytes" : 381624
+    },
+    "2022-TheOneClub-CreativeWeek_EventListing-1600x530.png" : {
+      "relativePath" : "2022-TheOneClub-CreativeWeek_EventListing-1600x530.png",
+      "sha256" : "3d42482841937809748b74602b995272ed1525638de69941312d53855deec6b3",
+      "lastModified" : 1703109438652,
+      "sizeBytes" : 58135
+    },
+    "wallpaperflare.com_wallpaper (8).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (8).jpg",
+      "sha256" : "948bb777599fb9c8cae8673b3a80932704d09138d5280670556474bd1e8eb3fe",
+      "lastModified" : 1680050372506,
+      "sizeBytes" : 1016520
+    },
+    "OIG.png" : {
+      "relativePath" : "OIG.png",
+      "sha256" : "2aa89ce6619680b9bdc25423313c75f2418307d98ab9ffae99e1acf4ea1401b8",
+      "lastModified" : 1703546670787,
+      "sizeBytes" : 381624
+    },
+    "unnamed (2).png" : {
+      "relativePath" : "unnamed (2).png",
+      "sha256" : "916e41ef7f22d2c9c3d135f9ed624a10f82e2063fa869eb507edf42026f7c540",
+      "lastModified" : 1683225266913,
+      "sizeBytes" : 12225
+    },
+    "OMEN_Moonlight Shinobi.png" : {
+      "relativePath" : "OMEN_Moonlight Shinobi.png",
+      "sha256" : "2af4eb565f8256ce504626a1f6f76cc4456eb0017fcc727b01a5dff7af40dae0",
+      "lastModified" : 1684358864590,
+      "sizeBytes" : 9308501
+    },
+    "unnamed.png" : {
+      "relativePath" : "unnamed.png",
+      "sha256" : "916e41ef7f22d2c9c3d135f9ed624a10f82e2063fa869eb507edf42026f7c540",
+      "lastModified" : 1683225266913,
+      "sizeBytes" : 12225
+    },
+    "wallpaperflare.com_wallpaper (11).jpg" : {
+      "relativePath" : "wallpaperflare.com_wallpaper (11).jpg",
+      "sha256" : "b861e71833371813111d8aeee2be93977e1ae52a54bb2687a575aa63e80f17a1",
+      "lastModified" : 1684183851771,
+      "sizeBytes" : 3025170
+    }
+  }
+}

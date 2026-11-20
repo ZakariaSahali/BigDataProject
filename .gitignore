@@ -14,7 +14,6 @@ target/
 *.log
 
 # Cache & Local Data (keep large datasets and model weights out of git)
-data/
 cache/
 embeddings/
 *.h5
