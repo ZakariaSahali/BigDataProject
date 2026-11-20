@@ -1,0 +1,406 @@
+================================================================================
+COMPLETE CODEBASE ARCHITECTURE & FILE-BY-FILE EXPLANATION
+Project: Incremental Deep Learning Feature Embedding for Repeated Image Collections
+Engine: Apache Spark Core (JavaRDDs) + Deeplearning4j (VGG16) + SHA-256 Binary Cache
+================================================================================
+
+This document contains a comprehensive, file-by-file breakdown of every class, 
+model, service, and configuration in the codebase. It explains:
+  1. What the file is.
+  2. Why it exists (the problem it solves).
+  3. Key methods and design choices.
+  4. How it fits into the distributed Big Data pipeline.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. BUILD & CONFIGURATION
+   - pom.xml
+
+2. DATA MODELS (com.incremental.image.model)
+   - CacheKey.java
+   - ChangeType.java
+   - ImageMetadata.java
+   - Manifest.java
+   - ImageChange.java
+   - EmbeddingRecord.java
+
+3. FINGERPRINTING & CHANGE DETECTION (com.incremental.image.fingerprint)
+   - FingerprintService.java
+   - ManifestManager.java
+   - ChangeDetector.java
+
+4. PERSISTENT CACHING LAYER (com.incremental.image.cache)
+   - CacheStats.java
+   - EmbeddingCacheManager.java
+
+5. DEEP LEARNING INFERENCE (com.incremental.image.dl)
+   - DL4JFeatureExtractor.java
+
+6. DISTRIBUTED SPARK COMPUTATION (com.incremental.image.spark)
+   - SparkPipelineContext.java
+   - SparkEmbeddingPipeline.java
+
+7. AUTOMATED TEST SUITES (src/test/java)
+   - FingerprintAndChangeDetectionTest.java
+   - EmbeddingCacheManagerTest.java
+   - DL4JFeatureExtractorTest.java
+   - SparkEmbeddingPipelineTest.java
+
+================================================================================
+1. BUILD & CONFIGURATION
+================================================================================
+
+--------------------------------------------------------------------------------
+File: pom.xml
+Location: /pom.xml
+--------------------------------------------------------------------------------
+- Purpose:
+  Central Maven configuration managing dependencies, compiler settings, and build plugins.
+
+- Why it exists:
+  Ensures consistent compilation across developer machines, handles binary OpenBLAS 
+  C++ acceleration bindings for ND4J on Linux x86_64, and resolves dependency conflicts 
+  between Apache Spark and Deeplearning4j.
+
+- Key Components:
+  1. Java 11 Source/Target:
+     Ensures JVM compatibility with Spark 3.2.x and prevents modular reflection issues.
+  2. Apache Spark Core (spark-core_2.12 v3.2.4):
+     Provides the distributed computing engine: JavaSparkContext, JavaRDD, DAGScheduler,
+     and task execution. Strictly excludes Spark SQL/DataFrames per academic requirements.
+  3. Deeplearning4j & ND4J (v1.0.0-M2.1):
+     - deeplearning4j-core: Neural net execution and computation graphs.
+     - deeplearning4j-zoo: Pre-trained models (VGG16 ImageNet).
+     - nd4j-native: Fast native CPU tensor algebra (C++ OpenBLAS/AVX2).
+     - datavec-data-image: Image decoding and tensor conversion.
+  4. Jackson Databind (v2.12.3):
+     Aligned with Spark 3.2's internal version to serialize/deserialize manifests safely.
+  5. JUnit Jupiter (JUnit 5):
+     Automated testing framework.
+
+
+================================================================================
+2. DATA MODELS (package: com.incremental.image.model)
+================================================================================
+
+--------------------------------------------------------------------------------
+File: CacheKey.java
+Location: src/main/java/com/incremental/image/model/CacheKey.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Defines the compound key used to identify and lookup cached embeddings.
+
+- Why it exists (The 3-Way Isolation Rule):
+  If you only key the cache on the image hash, switching from VGG16 to ResNet50 
+  or changing preprocessing (e.g., resizing or normalization) would return invalid, 
+  incompatible embeddings.
+  CacheKey enforces a 3-way isolation:
+    [fingerprint] + [modelVersion] + [preprocessingVersion]
+
+- Key Methods:
+  - implements Serializable: Allows keys to be passed across Spark RDD partitions.
+  - toStorageKey(): Formats the key into a file-system safe string:
+      "<fingerprint>_<modelVersion>_<preprocessingVersion>"
+  - equals() / hashCode(): Guarantees exact matches in Java HashMaps and caches.
+
+
+--------------------------------------------------------------------------------
+File: ChangeType.java
+Location: src/main/java/com/incremental/image/model/ChangeType.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Enumeration specifying what happened to an image file between two snapshots.
+
+- Values:
+  - NEW: An image that was added to the dataset folder.
+  - MODIFIED: An image whose content changed (different SHA-256 or new timestamp).
+  - DELETED: An image that was removed from the dataset.
+  - UNCHANGED: An image whose content and metadata are identical to the previous run.
+
+- Why it exists:
+  Provides explicit decision-making for the Spark scheduler. NEW and MODIFIED images 
+  are sent to Spark workers for VGG16 feature extraction; UNCHANGED images are read 
+  directly from cache without computing; DELETED images are skipped.
+
+
+--------------------------------------------------------------------------------
+File: ImageMetadata.java
+Location: src/main/java/com/incremental/image/model/ImageMetadata.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Stores the core identity and file attributes of an image on disk.
+
+- Fields:
+  - relativePath (e.g. "cars/car_01.jpg"): File path relative to dataset root.
+  - sha256: Hex-encoded 64-character SHA-256 cryptographic digest of the file content.
+  - lastModified: Unix epoch timestamp in milliseconds.
+  - sizeBytes: File size in bytes.
+
+- Why it exists:
+  Acts as a fast, lightweight summary of an image. Allows change detection algorithms 
+  to compare two collection states without re-reading the entire image files from disk.
+
+
+--------------------------------------------------------------------------------
+File: Manifest.java
+Location: src/main/java/com/incremental/image/model/Manifest.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Represents a complete snapshot of an entire image dataset at a specific timestamp.
+
+- Fields:
+  - version (e.g. "v1", "v2"): Version tag or commit label.
+  - timestamp: Time when the manifest was generated.
+  - datasetPath: Root folder where the images reside.
+  - images (Map<String, ImageMetadata>): Maps relativePath -> ImageMetadata.
+
+- Why it exists:
+  Acts as the immutable historical record of the dataset. When a new batch of images 
+  arrives, comparing Manifest(V1) with Manifest(V2) reveals exactly what was added, 
+  modified, or deleted.
+
+
+--------------------------------------------------------------------------------
+File: ImageChange.java
+Location: src/main/java/com/incremental/image/model/ImageChange.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Encapsulates the detected diff for a single image between two manifest snapshots.
+
+- Fields:
+  - relativePath: Path to the image.
+  - changeType: NEW, MODIFIED, DELETED, or UNCHANGED.
+  - previousMetadata: ImageMetadata in old manifest (null if NEW).
+  - currentMetadata: ImageMetadata in current manifest (null if DELETED).
+
+- Why it exists:
+  Serves as the input unit for the Spark Embedding Pipeline. Spark filters this list 
+  to parallelize only images requiring recalculation.
+
+
+--------------------------------------------------------------------------------
+File: EmbeddingRecord.java
+Location: src/main/java/com/incremental/image/model/EmbeddingRecord.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Represents the generated neural network feature vector ready for storage or retrieval.
+
+- Fields:
+  - cacheKey: The 3-way isolation key (fingerprint + model + preprocessing).
+  - vector: float[] array containing the actual embedding numbers (4,096 dimensions).
+  - dimension: Length of the vector (4096 for VGG16 fc2).
+  - createdAt: Timestamp when the embedding was extracted.
+
+- Why it exists:
+  Standardizes how vector features are held in memory and persisted into binary files. 
+  Allows downstream applications (like k-NN similarity search) to access raw float arrays.
+
+
+================================================================================
+3. FINGERPRINTING & CHANGE DETECTION (package: com.incremental.image.fingerprint)
+================================================================================
+
+--------------------------------------------------------------------------------
+File: FingerprintService.java
+Location: src/main/java/com/incremental/image/fingerprint/FingerprintService.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Computes SHA-256 cryptographic fingerprints of files.
+
+- Why it exists:
+  File timestamps and file names are notoriously unreliable in Big Data (e.g. copying 
+  files changes timestamps; re-saving an identical file updates timestamps). 
+  SHA-256 guarantees 100% collision-resistant content identity: identical bytes always 
+  yield the exact same 64-character hash.
+
+- Key Implementation Details:
+  - Uses a 64 KB streaming buffer (new byte[65536]): Prevents loading entire large 
+    files into heap memory at once, avoiding OutOfMemoryErrors when scanning datasets.
+  - Fast hex conversion: Formats the 32-byte digest into a standard lowercase hex string.
+
+
+--------------------------------------------------------------------------------
+File: ManifestManager.java
+Location: src/main/java/com/incremental/image/fingerprint/ManifestManager.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Scans image directories on disk, creates Manifest objects, and handles JSON storage.
+
+- Key Responsibilities:
+  1. Directory Traversal:
+     Uses Java NIO Files.walk() to recursively discover images in all subfolders.
+  2. File Extension Filter:
+     Recognizes standard image formats: .jpg, .jpeg, .png, .bmp, .gif, .webp.
+  3. JSON Persistence:
+     Uses Jackson ObjectMapper with pretty printing to save manifests (e.g., manifest_v1.json) 
+     and read them back for auditing and reproducibility.
+
+
+--------------------------------------------------------------------------------
+File: ChangeDetector.java
+Location: src/main/java/com/incremental/image/fingerprint/ChangeDetector.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Computes the delta between two collection snapshots (Manifest A vs. Manifest B).
+
+- Why it exists:
+  Implements the two comparison strategies required for academic benchmarking:
+  
+  1. detectChangesByFingerprint (Our Proposed Strategy):
+     - Compares image contents using SHA-256 hashes.
+     - If SHA-256 matches -> UNCHANGED (skip computation 100% safely).
+     - If SHA-256 differs -> MODIFIED (send to Spark).
+     - If only in Manifest B -> NEW.
+     - If only in Manifest A -> DELETED.
+  
+  2. detectChangesByTimestamp (Baseline Baseline Strategy):
+     - Compares lastModified timestamps and file sizes.
+     - Used to compare against the traditional "make/mtime" approach.
+
+
+================================================================================
+4. PERSISTENT CACHING LAYER (package: com.incremental.image.cache)
+================================================================================
+
+--------------------------------------------------------------------------------
+File: CacheStats.java
+Location: src/main/java/com/incremental/image/cache/CacheStats.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Thread-safe telemetry tracker recording cache activity.
+
+- Metrics Tracked:
+  - hits: Number of embeddings retrieved from cache without recalculating.
+  - misses: Number of embeddings not found in cache (required VGG16 inference).
+  - puts: Number of newly calculated embeddings written to disk.
+  - hitRate: hits / (hits + misses) as a percentage (0.0 to 1.0).
+
+- Why it exists:
+  Provides empirical proof for research questions (RQ1/RQ2), measuring exactly how 
+  much computation was saved during pipeline execution.
+
+
+--------------------------------------------------------------------------------
+File: EmbeddingCacheManager.java
+Location: src/main/java/com/incremental/image/cache/EmbeddingCacheManager.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Manages two-tier storage (In-Memory ConcurrentHashMap + Fast Binary Disk Files) 
+  for embedding vectors.
+
+- Why it exists & Key Architecture:
+  1. Two-Tier Lookup:
+     - Tier 1 (Memory): Checks in-memory ConcurrentHashMap for microsecond retrieval.
+     - Tier 2 (Disk): If not in memory, reads the binary file from cache directory.
+  2. Custom Compact Binary Format (.bin):
+     Instead of bulky JSON or slow Java standard serialization, vectors are stored 
+     using DataOutputStream / DataInputStream:
+       - 4 bytes: vector length (int)
+       - (4 * length) bytes: raw float values (writeFloat)
+       - 8 bytes: createdAt timestamp (long)
+     This achieves ultra-fast deserialization and minimal disk footprint.
+  3. Cache Invalidation:
+     Each file is named "<storageKey>.bin". Overwriting an image automatically creates 
+     a new key, ensuring old cache files never collide or return stale embeddings.
+
+
+================================================================================
+5. DEEP LEARNING INFERENCE (package: com.incremental.image.dl)
+================================================================================
+
+--------------------------------------------------------------------------------
+File: DL4JFeatureExtractor.java
+Location: src/main/java/com/incremental/image/dl/DL4JFeatureExtractor.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Wraps Deeplearning4j's pre-trained VGG16 model to extract dense numerical representations.
+
+- Key Architecture & Spark Compatibility:
+  1. Lazy Initialization (initializeIfNeeded):
+     Neural network models cannot be serialized across a Spark cluster from the driver 
+     node because they hold pointers to native C++ OpenBLAS memory.
+     DL4JFeatureExtractor marks the model as transient and initializes it lazily on the 
+     worker JVM when the partition executes.
+  2. Activation Layer Extraction (Layer "fc2"):
+     Instead of classification labels (1000 classes), we stop inference at the 
+     fc2 (Fully Connected 2) layer:
+       computationGraph.feedForward(features, false).get("fc2")
+     This produces a 4,096-dimensional float vector capturing visual semantics.
+  3. Preprocessing:
+     Resizes images to 224x224x3 and applies ImageNet mean-subtraction normalization 
+     (VGG16ImagePreProcessor).
+
+
+================================================================================
+6. DISTRIBUTED SPARK COMPUTATION (package: com.incremental.image.spark)
+================================================================================
+
+--------------------------------------------------------------------------------
+File: SparkPipelineContext.java
+Location: src/main/java/com/incremental/image/spark/SparkPipelineContext.java
+--------------------------------------------------------------------------------
+- Purpose:
+  Manages the lifecycle, configuration, and shutdown of the Spark computing engine.
+
+- Key Responsibilities:
+  1. Spark Configuration (SparkConf):
+     Configures app name, master (e.g., "local[*]" to utilize all CPU cores), and 
+     serializer settings.
+  2. Dynamic Partition Sizing:
+     Calculates default partition counts based on Runtime.availableProcessors() so 
+     workloads are evenly distributed across CPU cores.
+  3. Clean Lifecycle Management:
+     Implements Closeable to guarantee graceful shutdown of JavaSparkContext without 
+     leaving orphan worker threads.
+
+
+--------------------------------------------------------------------------------
+File: SparkEmbeddingPipeline.java
+Location: src/main/java/com/incremental/image/spark/SparkEmbeddingPipeline.java
+--------------------------------------------------------------------------------
+- Purpose:
+  The master distributed orchestrator executing the 3 experimental modes on Spark RDDs.
+
+- Execution Modes Supported:
+  1. FULL_RECALCULATION:
+     Forces Spark to recompute all images through VGG16, completely ignoring the cache. 
+     (Represents the traditional, naive Big Data pipeline).
+  2. TIMESTAMP_INCREMENTAL:
+     Uses timestamp checks to skip computation.
+  3. FINGERPRINT_INCREMENTAL (Our Proposed Solution):
+     Uses SHA-256 fingerprints to fetch UNCHANGED images instantly from disk cache, 
+     filtering down to only NEW and MODIFIED images for Spark RDD processing.
+
+- Why mapPartitions is Used:
+  Instead of using rdd.map() (which would re-initialize VGG16 for every single image), 
+  we use:
+    rdd.mapPartitions(iterator -> { ... })
+  This initializes VGG16 once per CPU core/worker, and then streams all images in that 
+  partition through the model. This eliminates massive initialization overhead.
+
+
+================================================================================
+7. AUTOMATED TEST SUITES (package: src/test/java)
+================================================================================
+
+1. FingerprintAndChangeDetectionTest.java:
+   - Validates SHA-256 byte streaming calculation.
+   - Tests JSON manifest generation and disk loading.
+   - Verifies that ChangeDetector properly classifies NEW, MODIFIED, and UNCHANGED images.
+
+2. EmbeddingCacheManagerTest.java:
+   - Tests binary disk persistence (.bin) and in-memory caching.
+   - Verifies 3-way isolation (different model versions never return cached hits for each other).
+   - Tests cache clearing and CacheStats tracking.
+
+3. DL4JFeatureExtractorTest.java:
+   - Uses a synthetic test image and a fast neural net configuration to verify 
+     activation layer extraction and output vector dimensions without network overhead.
+
+4. SparkEmbeddingPipelineTest.java:
+   - End-to-end integration test.
+   - Spins up local Spark JavaSparkContext with 2 partitions.
+   - Runs Run 1 (Cold): all images extracted via Spark RDD.
+   - Runs Run 2 (Incremental): all images hit cache instantly with 0 Spark tasks needed.
+================================================================================
