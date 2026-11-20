@@ -89,6 +89,18 @@ git clone git@github.com:ZakariaSahali/BigDataProject.git
 cd BigDataProject
 ```
 
+### Run Pipeline on Real Images (Live Showcase Dashboard)
+Place your images inside `data/images/` and run the interactive execution dashboard:
+```bash
+MAVEN_OPTS="-Xmx4g" mvn exec:java -Dexec.mainClass="com.incremental.image.PipelineRunner"
+```
+
+This displays a live inventory breakdown:
+- 📊 **Dataset Inventory Breakdown:** Discovered images, already cached (old), new/unseen, and cache warmth.
+- ⚡ **Spark & DL4J Execution:** Distributed ingestion and feature extraction.
+- ⏱️ **Performance & Timers:** Precise timing comparison between Active Ingestion vs 100% Incremental execution.
+- 📈 **Cache Efficiency Metrics:** Hits, misses, and hit rate percentage.
+
 ### Build & Run Unit Tests
 To compile and execute unit tests (excluding heavy neural net downloads):
 ```bash
