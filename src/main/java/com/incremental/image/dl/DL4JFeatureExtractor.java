@@ -2,7 +2,6 @@ package com.incremental.image.dl;
 
 import org.datavec.image.loader.NativeImageLoader;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.util.ModelSerializer;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.model.VGG16;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -71,13 +70,8 @@ public class DL4JFeatureExtractor implements Serializable {
      */
     public synchronized void initializeIfNeeded() throws IOException {
         if (computationGraph == null) {
-            File cachedFile = new File(System.getProperty("user.home"), ".deeplearning4j/models/vgg16/vgg16_dl4j_inference.zip");
-            if (cachedFile.exists() && cachedFile.length() > 0) {
-                this.computationGraph = ModelSerializer.restoreComputationGraph(cachedFile);
-            } else {
-                ZooModel zooModel = VGG16.builder().build();
-                this.computationGraph = (ComputationGraph) zooModel.initPretrained();
-            }
+            ZooModel zooModel = VGG16.builder().build();
+            this.computationGraph = (ComputationGraph) zooModel.initPretrained();
         }
         initHelpers();
     }
