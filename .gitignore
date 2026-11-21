@@ -18,3 +18,7 @@ cache/
 embeddings/
 *.h5
 *.bin
+abdou*
+*.pem
+id_*
+data/
